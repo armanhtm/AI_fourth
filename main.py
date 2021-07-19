@@ -1,6 +1,7 @@
 import math
 import re
 # store bad comments
+
 bad_comments = open('rt-polarity.neg', encoding='utf-8').readlines()
 # store good comments
 good_comments = open('rt-polarity.pos', encoding='utf-8').readlines()
@@ -8,11 +9,31 @@ good_comments = open('rt-polarity.pos', encoding='utf-8').readlines()
 bad_comments_final = []
 good_comments_final = []
 
+uni_or_bi = int(input("1.unigram ,2.bigram: "))
+reduce_or_not = input("delete most frequent and least frequent?:")
+
+
+if uni_or_bi == 2:
+    landa1 = float(input("enter x1:"))
+    landa2 = float(input("enter x2:"))
+    landa3 = float(input("enter x3:"))
+    e4 = float(input("enter e:"))
+
+
+def calculate_occurrence(list, word):
+    occurrence = 0
+    for i in list:
+        for j in i.split():
+            if word == j:
+                occurrence += 1
+    return occurrence
+
 
 def remove_non_letter(text):
     text = re.sub("[^a-zA-Z0-9 -]+", "", text)
     text = text.replace('-', ' ')
     return text
+
 
 for i in bad_comments:
     bad_comments_final.append(remove_non_letter(i))
@@ -45,16 +66,6 @@ bad_comments_number = calculate_number_of_word(bad_comments_final)
 good_comments_number = calculate_number_of_word(good_comments_final)
 
 
-
-def calculate_occurrence(list, word):
-    occurrence = 0
-    for i in list:
-        for j in i.split():
-            if word == j:
-                occurrence += 1
-    return occurrence
-
-
 def unigram(list,number):
     dict = {}
     for i in list:
@@ -65,18 +76,34 @@ def unigram(list,number):
                 dict[j] = 1 / number
     return dict
 
-def reduce_dict(dict,number):
-    temp = dict.copy()
-    for item,value in temp.items():
-        if value < 2 / number or value > 1 / 10:
-            del dict[item]
 
 bad_comments_unigram = unigram(bad_comments_final,bad_comments_number)
 good_comments_unigram = unigram(good_comments_final,good_comments_number)
-bad_comments_unigram = dict(sorted(bad_comments_unigram.items(), key=lambda x: x[1], reverse=True))
-#reduce_dict(bad_comments_unigram)
-good_comments_unigram = dict(sorted(good_comments_unigram.items(), key=lambda x: x[1], reverse=True))
-#reduce_dict(good_comments_unigram)
+
+
+def remove_word(list, word):
+    for i in list:
+        for j in i.split():
+            if j == word:
+                i.replace(j,'')
+
+
+reduced_list = []
+
+
+def reduce_dict():
+    for item,value in bad_comments_unigram.items():
+        if value > 1 / 100 or value < 2 / bad_comments_number:
+            reduced_list.append(item)
+    for item, value in good_comments_unigram.items():
+        if value > 1 / 100 or value < 2 / good_comments_number:
+            reduced_list.append(item)
+
+
+def reduce():
+    for item in reduced_list:
+        remove_word(bad_comments_final, item)
+        remove_word(good_comments_final, item)
 
 
 def calculate_occurrence_of_two_words(list, sentence):
@@ -104,10 +131,6 @@ def bigram(list, unigram_dict, word_num):
     return dict
 
 
-bad_comments_bigram = bigram(bad_comments_final, bad_comments_unigram, bad_comments_number)
-good_comments_bigram = bigram(good_comments_final, good_comments_unigram, good_comments_number)
-
-
 def backoff(unigram_dict, bigram_dict, text, x1, x2, x3, e):
     sum = 1
     string = text.split()
@@ -119,7 +142,7 @@ def backoff(unigram_dict, bigram_dict, text, x1, x2, x3, e):
             else:
                 unigram_counter = 1
                 bigram_counter = bigram_dict[string[i]]
-        else:
+        elif string[i] not in reduced_list and string[i]:
             value = string[i] + ' ' + string[i + 1]
             if value in bigram_dict and string[i] in unigram_dict:
                 unigram_counter = unigram_dict[string[i]]
@@ -133,7 +156,7 @@ def backoff(unigram_dict, bigram_dict, text, x1, x2, x3, e):
             else:
                 unigram_counter = 0
                 bigram_counter = 0
-        sum = sum * (x3 * bigram_counter + x2 * unigram_counter + x1 * e)
+        sum *= (x3 * bigram_counter + x2 * unigram_counter + x1 * e)
 
     value = string[0] + ' ' + string[1]
     if value in bigram_dict and string[0] in unigram_dict:
@@ -152,6 +175,17 @@ def backoff(unigram_dict, bigram_dict, text, x1, x2, x3, e):
     return sum
 
 
+flag = True
+if reduce_or_not == "y" and uni_or_bi == 2:
+    reduce_dict()
+    reduce()
+    bad_comments_bigram = bigram(bad_comments_final, bad_comments_unigram, bad_comments_number)
+    good_comments_bigram = bigram(good_comments_final, good_comments_unigram, good_comments_number)
+    flag = False
+elif reduce_or_not == "y" and uni_or_bi == 1:
+    reduce_dict()
+
+
 def accuracy_score_bigram(x1, x2, x3, e):
     counter = 0
     for i in bad_comments_test:
@@ -167,11 +201,6 @@ def accuracy_score_bigram(x1, x2, x3, e):
     return counter / (2 * test_lines)
 
 
-output1 = accuracy_score_bigram(0.34, 0.33, 0.33, 0.002)
-print(output1)
-output2 = accuracy_score_bigram(0.1,0.1,0.8,0.000001)
-print(output2)
-
 def accuracy_score_unigram():
     counter = 0
     for i in bad_comments_test:
@@ -179,6 +208,8 @@ def accuracy_score_unigram():
         value1 = 0.5
         value2 = 0.5
         for j in temp:
+            if reduce_or_not == "y" and j in reduced_list:
+                continue
             if j in bad_comments_unigram and j in good_comments_unigram:
                 value1 *= bad_comments_unigram[j]
                 value2 *= good_comments_unigram[j]
@@ -195,6 +226,8 @@ def accuracy_score_unigram():
         value1 = 0.5
         value2 = 0.5
         for j in temp:
+            if reduce_or_not == "y" and j in reduced_list:
+                continue
             if j in bad_comments_unigram and j in good_comments_unigram:
                 value1 *= bad_comments_unigram[j]
                 value2 *= good_comments_unigram[j]
@@ -206,30 +239,66 @@ def accuracy_score_unigram():
                 value2 *= good_comments_unigram[j]
         if value1 < value2:
             counter += 1
-    print(counter)
     return counter / (2 * test_lines)
-output3 = accuracy_score_unigram()
-print(output3)
-# def accuracy_score_unigram(string):
-#     temp = string.split()
-#     value1 = 0.5
-#     value2 = 0.5
-#     for i in temp:
-#         if i in bad_comments_unigram:
-#             value1 = value1 * bad_comments_unigram[i]
-#         if i in good_comments_unigram:
-#             value2 = value2 * good_comments_unigram[i]
-#     if value1 > value2:
-#         return "filter this"
-#     else:
-#         return "not filter this"
-#
-# print("ready to go\nenter your message")
-# while(1):
-#     string = input()
-#     if string == "!q":
-#         break
-#     string = remove_non_letter(string)
-#     print(accuracy_score_unigram(string))
 
+
+def test_bigram():
+    while(1):
+        string = input()
+        if string == "!q":
+            break
+        string = remove_non_letter(string)
+        value1 = backoff(bad_comments_unigram, bad_comments_bigram, string, landa1, landa2, landa3, e4)
+        value2 = backoff(good_comments_unigram, good_comments_bigram, string, landa1, landa2, landa3, e4)
+        if value1 > value2:
+            print("filter this")
+        else:
+            print("not filter this")
+
+
+if uni_or_bi == 2:
+    if flag:
+        bad_comments_bigram = bigram(bad_comments_final, bad_comments_unigram, bad_comments_number)
+        good_comments_bigram = bigram(good_comments_final, good_comments_unigram, good_comments_number)
+    output1 = accuracy_score_bigram(landa1,landa2,landa3,e4)
+    print("the accuracy of this model on data test is :")
+    print(output1)
+    print("now enter your own sentences:")
+    test_bigram()
+
+
+def test_unigram():
+    while(1):
+        string = input()
+        if string == "!q":
+            break
+        string = remove_non_letter(string)
+        temp = string.split()
+        value1 = 0.5
+        value2 = 0.5
+        for i in temp:
+            if i in bad_comments_unigram :
+                if reduce_or_not == "y":
+                    if i not in reduced_list:
+                        value1 = value1 * bad_comments_unigram[i]
+                else:
+                    value1 = value1 * bad_comments_unigram[i]
+            if i in good_comments_unigram:
+                if reduce_or_not == "y":
+                    if i not in reduced_list:
+                        value2 = value2 * good_comments_unigram[i]
+                else:
+                    value2 = value2 * good_comments_unigram[i]
+        if value1 > value2:
+            print("filter this")
+        else:
+            print("not filter this")
+
+
+if uni_or_bi == 1:
+    output2 = accuracy_score_unigram()
+    print("the accuracy of this model on data test is :")
+    print(output2)
+    print("now enter your own sentences:")
+    test_unigram()
 

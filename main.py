@@ -46,7 +46,7 @@ good_comments_lines = len(good_comments_final)
 bad_comments_test = []
 good_comments_test = []
 
-test_lines = math.floor(0.05 * (bad_comments_lines + good_comments_lines))
+test_lines = math.floor(0.01 * (bad_comments_lines + good_comments_lines))
 
 for i in range(test_lines):
     bad_comments_test.append(bad_comments_final[i])
@@ -93,10 +93,10 @@ reduced_list = []
 
 def reduce_dict():
     for item,value in bad_comments_unigram.items():
-        if value > 1 / 100 or value < 2 / bad_comments_number:
+        if value > 1 / 200 or value < 1 / bad_comments_number:
             reduced_list.append(item)
     for item, value in good_comments_unigram.items():
-        if value > 1 / 100 or value < 2 / good_comments_number:
+        if value > 1 / 200 or value < 1 / good_comments_number:
             reduced_list.append(item)
 
 
@@ -219,7 +219,7 @@ def accuracy_score_unigram():
             elif j in good_comments_unigram:
                 value1 *= (good_comments_unigram[j] / 2)
                 value2 *= good_comments_unigram[j]
-        if value1 > value2:
+        if value1 >= value2:
             counter += 1
     for i in good_comments_test:
         temp = i.split()
@@ -237,7 +237,7 @@ def accuracy_score_unigram():
             elif j in good_comments_unigram:
                 value1 *= (good_comments_unigram[j] / 2)
                 value2 *= good_comments_unigram[j]
-        if value1 < value2:
+        if value1 <= value2:
             counter += 1
     return counter / (2 * test_lines)
 
